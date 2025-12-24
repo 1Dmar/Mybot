@@ -1,7 +1,7 @@
 require('dotenv-flow').config();
 const express = require('express');
 const mainApp = express();
-
+const keep_alive = require('./keep_alive.js');
 // جسر التوافق للمشروع الأول
 const bot1 = require('./dash/index');
 if (typeof bot1 === 'function') {
