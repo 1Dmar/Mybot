@@ -1,28 +1,33 @@
-const { CommandInteraction, ApplicationCommandType, PermissionFlagsBits, Client, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const {
+  Message,
+  PermissionFlagsBits,
+  Client,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
 const Membership = require("../../../Models/User");
 
 module.exports = {
   name: "mslist",
-  description: "Show all membership servers",
-  userPermissions: PermissionFlagsBits.Administrator,
+  description: `Show all membership servers`,
+  userPermissions: PermissionFlagsBits.SendMessages,
   botPermissions: PermissionFlagsBits.SendMessages,
   category: "Owner",
-  type: ApplicationCommandType.ChatInput,
-  run: async (client, interaction) => {
-    if (interaction.user.id !== "804999528129363998" && interaction.user.id !== "1071690719418396752") {
-      return interaction.reply({
+  type1: "message",
+  run: async (client, message, args, prefix) => {
+    if (message.author.id !== "804999528129363998" && message.author.id !== "1071690719418396752") {
+      return message.reply({
         content: "You are not authorized to use this command.",
-        ephemeral: true,
       });
     }
-
-    await interaction.deferReply({ ephemeral: true });
 
     try {
       const membershipServers = await Membership.find({ ismembership: true });
 
       if (membershipServers.length === 0) {
-        return interaction.editReply({
+        return message.reply({
           embeds: [
             new EmbedBuilder()
               .setTitle(`All Membership Servers`)
@@ -32,15 +37,12 @@ module.exports = {
         });
       }
 
-      const servers = membershipServers.map(server => {
-        const guild = client.guilds.cache.get(server.Id);
-        return {
-          id: server.Id,
-          name: guild ? guild.name : "Unknown Server",
-          plan: server.membership.plan || 'N/A',
-          expiresAt: Math.floor(server.membership.expiresAt / 1000),
-        };
-      });
+      const servers = membershipServers.map(server => ({
+        id: server.Id,
+        name: client.guilds.cache.get(server.Id)?.name || "Unknown Server",
+        plan: server.membership.plan || 'N/A',
+        expiresAt: Math.floor(server.membership.expiresAt / 1000),
+      }));
 
       let page = 0;
       const pageSize = 5;
@@ -74,15 +76,14 @@ module.exports = {
         );
       };
 
-      const message = await interaction.editReply({
+      const embedMessage = await message.reply({
         embeds: [generateEmbed(page)],
         components: [generateButtons(page)],
-        fetchReply: true,
       });
 
-      const collector = message.createMessageComponentCollector({
-        filter: (i) => i.user.id === interaction.user.id,
-        time: 120000, // 2 minutes
+      const collector = embedMessage.createMessageComponentCollector({
+        filter: (i) => i.user.id === message.author.id,
+        time: 120000,
       });
 
       collector.on('collect', async (i) => {
@@ -91,24 +92,21 @@ module.exports = {
         } else if (i.customId === 'next_page') {
           page++;
         }
-
         await i.update({
           embeds: [generateEmbed(page)],
           components: [generateButtons(page)],
-        }).catch(err => console.error("Failed to update mslist interaction:", err));
+        }).catch(() => {});
       });
 
       collector.on('end', () => {
         const disabledButtons = generateButtons(page);
         disabledButtons.components.forEach(c => c.setDisabled(true));
-        interaction.editReply({ components: [disabledButtons] }).catch(() => {});
+        embedMessage.edit({ components: [disabledButtons] }).catch(() => {});
       });
 
     } catch (error) {
-      console.error("Error in mslist command:", error);
-      if (interaction.deferred) {
-        await interaction.editReply({ content: "An error occurred while fetching the membership list." }).catch(() => {});
-      }
+      console.error("Error in mslist message command:", error);
+      await message.reply("An error occurred while fetching the membership list.").catch(() => {});
     }
   },
 };

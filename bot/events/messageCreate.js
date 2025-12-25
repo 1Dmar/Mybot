@@ -29,94 +29,76 @@ const AutoResponder = require("../Models/AutoResponder");
 const { DateTime } = require('luxon');
 const Log = require('../Models/Log');
 const url = "http://promcbot.qzz.io";
-client.on("messageCreate", async (message) => {
-    if (message.author.bot || !message.guild) return;
+module.exports = {
+  name: 'messageCreate',
+  async execute(message) {
+    const client = message.client;
+    if (message.author.bot || !message.guild || !message.content) return;
 
-    let prefix = PREFIX;
-    if (!message.content.startsWith(prefix)) return;
-
-    let args = message.content.slice(prefix.length).trim().split(/ +/);
-    let cmd = args.shift()?.toLowerCase();
-    const command = client.mcommands.get(cmd);
-    if (!command) return;
-
-    let serverdb = client.userSettings.get(message.guild.id);
-    let serverdbbl = client.userSettings.get(message.guild.id + "_bl");
+    // Initialize userSettings if it doesn't exist
+    if (!client.userSettings) {
+      client.userSettings = new Collection();
+    }
 
     try {
-        // Fetch user settings from the database if not cached
-        if (!serverdb) {
-            const findUser = await User.findOne({ Id: message.guild.id });
-            if (!findUser) {
-                const newUser = await User.create({ Id: message.guild.id });
-                client.userSettings.set(message.guild.id, newUser);
-                serverdb = newUser;
-            } else {
-                serverdb = findUser;
-                client.userSettings.set(message.guild.id, findUser);
-            }
-        }
+      // Command Handler
+      if (message.content.startsWith(PREFIX)) {
+        let args = message.content.slice(PREFIX.length).trim().split(/ +/);
+        let cmd = args.shift()?.toLowerCase();
+        const command = client.mcommands.get(cmd);
 
-        // Fetch blacklist entry from the database if not cached
-        if (!serverdbbl) {
-            const findBlackList = await BlackList.findOne({ guildIds: message.guild.id });
-            if (findBlackList) {
-                client.userSettings.set(message.guild.id + "_bl", findBlackList);
-                serverdbbl = findBlackList;
-            }
-        }
+        if (command) {
+          // Server and Blacklist data handling with caching
+          let serverdb = client.userSettings.get(message.guild.id);
+          if (!serverdb) {
+            serverdb = await User.findOneAndUpdate({ Id: message.guild.id }, { $setOnInsert: { Id: message.guild.id } }, { upsert: true, new: true });
+            client.userSettings.set(message.guild.id, serverdb);
+          }
 
-        // Blacklist check
-        if (serverdbbl && serverdbbl.isBlacklisted === 'true') {
-            const replyMessage = await message.reply({
-                content: `> \`${message.guild.name}\`<:Block:1410147617056362558> Server has been Blacklisted from ProMcBot`,
-            });
-            
-            setTimeout(() => {
-                replyMessage.delete().catch(console.error);
-            }, 5000);
-            return;
-        }
+          let serverdbbl = client.userSettings.get(`${message.guild.id}_bl`);
+          if (!serverdbbl) {
+            serverdbbl = await BlackList.findOne({ guildIds: message.guild.id });
+            if (serverdbbl) client.userSettings.set(`${message.guild.id}_bl`, serverdbbl);
+          }
 
-        // Permissions check
-        if (
-            command.userPermissions &&
-            !message.member.permissions.has(command.userPermissions)
-        ) {
-            return message.reply({
-                content: `<:Warning:1410147601281581118> you don't have enough permissions !!`,
-            });
-        } else if (
-            command.botPermissions &&
-            !message.guild.members.me.permissions.has(command.botPermissions)
-        ) {
-            return message.reply({
-                content: `<:Warning:1410147601281581118> I don't have enough permissions !!`,
-            });
-        } else if (cooldown(message, command)) {
-            return message.reply({
-                content: `<:Warning:1410147601281581118> You are On Cooldown , wait \`${cooldown(
-                    message,
-                    command,
-                ).toFixed()}\` Seconds`,
-            });
-        } else if (command.membership && serverdb && !serverdb.ismembership) {
-            const replyMessage = await message.reply({
-                content: `> \`${message.guild.name}\`<:Warning:1410147601281581118> Server is Not a MemberShip Server`,
-            });
-            
-            setTimeout(() => {
-                replyMessage.delete().catch(console.error);
-            }, 5000);
-            return;
-        } else {
-            command.run(client, message, args, prefix);
+          if (serverdbbl?.isBlacklisted === 'true') {
+            return message.reply(`> \`${message.guild.name}\` is blacklisted.`).then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
+          }
+          if (command.userPermissions && !message.member.permissions.has(command.userPermissions)) {
+            return message.reply("You don't have enough permissions.");
+          }
+          if (command.botPermissions && !message.guild.members.me.permissions.has(command.botPermissions)) {
+            return message.reply("I don't have enough permissions.");
+          }
+          if (command.membership && !serverdb?.ismembership) {
+            return message.reply("This is a membership-only command.").then(msg => setTimeout(() => msg.delete().catch(() => {}), 5000));
+          }
+
+          await command.run(client, message, args, PREFIX);
+          return; // Stop further processing
         }
+      }
+
+      // Auto Responder (only if no command was executed)
+      const autoResponders = await AutoResponder.find({ guildId: message.guild.id });
+      for (const autoResponder of autoResponders) {
+        if (message.content.includes(autoResponder.trigger)) {
+          // Role checks can be added here if needed
+          if (autoResponder.replyType === 'reply') {
+            await message.reply(autoResponder.response);
+          } else {
+            await message.channel.send(autoResponder.response);
+          }
+          break;
+        }
+      }
+
     } catch (error) {
-        console.error("Error handling command:", error);
-        message.reply("<:Warning:1410147601281581118> An error occurred while processing the command, You can contact technical support");
+      console.error(`Error in messageCreate event for guild ${message.guild.id}:`, error);
+      message.reply("An error occurred. Please try again later.").catch(() => {});
     }
-});
+  }
+};
 
 function cooldown(message, cmd) {
     if (!message || !cmd) return;

@@ -25,46 +25,79 @@ module.exports = {
       required: false,
     }
   ],
-  run: async (client, interaction, args) => {
-    const plan = interaction.options.getString('plan');
-    const amount = interaction.options.getInteger('amount') || 1;
-    const codes = [];
-    const plans = ["daily", "weekly", "monthly", "yearly"];
-    let time;
-
-    if (!plans.includes(plan)) {
-      return interaction.reply(`Available Plans: \n > \`${plans.join(", ")}\``);
+  run: async (client, interaction) => {
+    if (interaction.user.id !== "804999528129363998" && interaction.user.id !== "1071690719418396752") {
+      return interaction.reply({
+        content: "You are not authorized to use this command.",
+        ephemeral: true
+      });
     }
-    if (plan === "daily") time = Date.now() + 86400000;
-    if (plan === "weekly") time = Date.now() + 86400000 * 7;
-    if (plan === "monthly") time = Date.now() + 86400000 * 30;
-    if (plan === "yearly") time = Date.now() + 86400000 * 365;
 
-    for (let i = 0; i < amount; i++) {
-      const codeMemberShip = voucher_codes.generate({ pattern: "####-#####-###-####" });
-      const code = codeMemberShip.toString().toUpperCase();
-      const find = await schema.findOne({ code: code });
+    await interaction.deferReply({
+      ephemeral: true
+    });
 
-      if (!find) {
-        await schema.create({
-          code: code,
-          plan: plan,
-          expiresAt: time,
+    try {
+      const plan = interaction.options.getString('plan').toLowerCase();
+      const amount = interaction.options.getInteger('amount') || 1;
+      const codes = [];
+      const plans = {
+        daily: 86400000,
+        weekly: 86400000 * 7,
+        monthly: 86400000 * 30,
+        yearly: 86400000 * 365
+      };
+
+      if (!plans[plan]) {
+        return interaction.editReply({
+          content: `Invalid plan. Available plans: \`${Object.keys(plans).join(", ")}\``
         });
-        codes.push(`${code}`);
       }
-    }
 
-    return interaction.reply({
-      embeds: [
-        new EmbedBuilder()
+      const time = Date.now() + plans[plan];
+
+      for (let i = 0; i < amount; i++) {
+        const codeMemberShip = voucher_codes.generate({
+          pattern: "####-#####-###-####"
+        });
+        const code = codeMemberShip[0].toUpperCase();
+        const find = await schema.findOne({
+          code: code
+        });
+
+        if (!find) {
+          await schema.create({
+            code: code,
+            plan: plan,
+            expiresAt: time,
+          });
+          codes.push(code);
+        }
+      }
+
+      await interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
           .setColor("Blurple")
           .setTitle(`Generated ${codes.length} Codes`)
-          .setDescription(`\`\`\`\n${codes.join("\n") || "No Codes Generated"} \`\`\``)
-          .addFields([{ name: 'Expire At', value: `<t:${Math.floor(time / 1000)}:F>` }])
-          .setFooter({ text: `To redeem, use !redeem <code>` }),
-      ],
-      ephemeral: true,
-    });
+          .setDescription(`\`\`\`\n${codes.join("\n") || "No Codes Generated"}\`\`\``)
+          .addFields([{
+            name: 'Expires At',
+            value: `<t:${Math.floor(time / 1000)}:F>`
+          }])
+          .setFooter({
+            text: `To redeem, use /claim <code>`
+          }),
+        ],
+      });
+
+    } catch (error) {
+      console.error("Error in gencode command:", error);
+      if (interaction.deferred) {
+        await interaction.editReply({
+          content: "An error occurred while generating the codes.",
+        }).catch(() => {});
+      }
+    }
   },
 };

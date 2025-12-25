@@ -20,19 +20,25 @@ module.exports = {
    * @param {CommandInteraction} interaction
    */
   run: async (client, interaction) => {
-    // Code
-    const embed = new EmbedBuilder()
-
-            .setColor("#ee3c37")
-
-            .setTitle(`ProMcBot | MineServers Assistant`)
-
+    try {
+      const embed = new EmbedBuilder()
+        .setColor("#ee3c37")
+        .setTitle(`ProMcBot | MineServers Assistant`)
         .setURL("https://discord.com/oauth2/authorize?client_id=1220005260857311294&permissions=537250992&integration_type=0&scope=bot+applications.commands")
+        .setDescription("**ProMcBot provides an easy way to connect a Minecraft server to Discord. You can view and control server information at the push of a button.\n\nMain commands:\n\n/setup_server\nTo set up a Minecraft server by clicking server_Type from Dropdown.\n\n/remove_server\nto disable integration and remove data from the bot.\n\nFor support, contact [ProMcBot Support](https://discord.gg/6FjFYStz5a)\n**");
 
-            .setDescription("**ProMcBot provides an easy way to connect a Minecraft server to Discord. You can view and control server information at the push of a button.\n\nMain commands:\n\n/setup_server\nTo set up a Minecraft server by clicking server_Type from Dropdown.\n\n/remove_server\nto disable integration and remove data from the bot.\n\nFor support, contact [ProMcBot Support](https://discord.gg/6FjFYStz5a)\n**");
-
-        
-
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({
+        embeds: [embed],
+        ephemeral: true
+      });
+    } catch (error) {
+      console.error("Error in help command:", error);
+      if (!interaction.replied) {
+        await interaction.reply({
+          content: "An error occurred while displaying the help message.",
+          ephemeral: true,
+        }).catch(() => {});
+      }
+    }
   },
 };
