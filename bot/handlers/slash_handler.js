@@ -49,7 +49,7 @@ module.exports = async (client) => {
         client.once("ready", async () => {
             try {
                 const rest = new REST({ version: "10" }).setToken(token);
-                const clientId = client.user.id;
+                const clientId = '1220005260857311294';// client.user.id;
 
                 console.log(`🔄 Registering slash commands for ${client.user.tag}...`);
 
