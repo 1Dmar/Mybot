@@ -32,7 +32,7 @@ module.exports = {
     try {
       const server = await Server.findOne({ serverId });
       if (!server) {
-        return interaction.reply({ 
+        return interaction.editReply({ 
           content: CONFIG.MESSAGES.SERVER_NOT_FOUND, 
           ephemeral: true 
         });
@@ -46,12 +46,12 @@ module.exports = {
 
       await updateServerStatus(client, server, settings);
       
-      interaction.reply({ 
+      interaction.editReply({ 
         content: CONFIG.MESSAGES.SETUP_SUCCESS(channel.toString()),
         ephemeral: true 
       });
     } catch (error) {
-      interaction.reply({ 
+      interaction.editReply({ 
         content: '❌ Setup failed!', 
         ephemeral: true 
       });

@@ -61,7 +61,7 @@ module.exports = {
       );
     
 
-    await interaction.reply({
+    await interaction.editReply({
       content: `${Serverplanchoose}`,
       components: [serverTypeRow],
       ephemeral: true,

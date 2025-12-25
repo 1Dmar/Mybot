@@ -20,7 +20,7 @@ module.exports = {
    */
   run: async (client, interaction) => {
     // Code
-    interaction.reply({
+    interaction.editReply({
       content: `> Pong \`${client.ws.ping}\``,
       ephemeral: true,
     });

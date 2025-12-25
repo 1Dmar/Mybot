@@ -90,6 +90,7 @@ module.exports = {
         try {
             // 1. Handle Slash Commands
             if (interaction.isChatInputCommand()) {
+                await interaction.deferReply({ ephemeral: true }).catch(() => {});
                 const command = client.scommands.get(interaction.commandName);
                 
                 if (!command) {
@@ -101,10 +102,18 @@ module.exports = {
 
                 try {
                     await command.run(client, interaction);
+                    // If the command ran successfully, we need to edit the deferred reply.
+                    // If the command already replied/followed up, this will be ignored.
+                    if (!interaction.replied && !interaction.deferred) {
+                        // This should not happen if deferReply is called, but as a fallback
+                        await interaction.editReply({ content: `${EMOJIS.CHECK} Command executed successfully.`, ephemeral: true }).catch(() => {});
+                    }
                 } catch (error) {
                     console.error(`Error executing ${interaction.commandName}:`, error);
                     const errorMsg = { content: `${EMOJIS.WARNING} There was an error while executing this command!`, ephemeral: true };
-                    if (interaction.replied || interaction.deferred) {
+                    if (interaction.deferred) {
+                        await interaction.editReply(errorMsg);
+                    } else if (interaction.replied) {
                         await interaction.followUp(errorMsg);
                     } else {
                         await interaction.reply(errorMsg);
