@@ -21,22 +21,31 @@ module.exports = {
    * @param {String} prefix
    */
   run: async (client, message, args, prefix) => {
-    // Code
-    let AvatarUrl = message.author.displayAvatarURL({
-      extension: "png",
-      size: 512,
-    });
-    message.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setColor("Blurple")
-          .setAuthor({
-            name: `Avatar Of ${message.author.tag}`,
-            iconURL: AvatarUrl,
-          })
-          .setImage(AvatarUrl)
-          .setTimestamp(),
-      ],
-    });
+    try {
+      const user = message.mentions.users.first() || client.users.cache.get(args[0]) || message.author;
+      const avatarURL = user.displayAvatarURL({
+        extension: "png",
+        size: 512,
+        dynamic: true
+      });
+
+      await message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor("Blurple")
+            .setAuthor({
+              name: `Avatar Of ${user.tag}`,
+              iconURL: avatarURL,
+            })
+            .setImage(avatarURL)
+            .setTimestamp(),
+        ],
+      });
+    } catch (error) {
+      console.error("Error in avatar message command:", error);
+      await message.reply({
+        content: "An error occurred while fetching the avatar.",
+      }).catch(() => {});
+    }
   },
 };

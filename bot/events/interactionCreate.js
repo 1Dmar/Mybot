@@ -90,33 +90,30 @@ module.exports = {
         try {
             // 1. Handle Slash Commands
             if (interaction.isChatInputCommand()) {
-                await interaction.deferReply({ ephemeral: true }).catch(() => {});
                 const command = client.scommands.get(interaction.commandName);
-                
+
                 if (!command) {
-                    return await interaction.reply({ 
-                        content: `${EMOJIS.WARNING} This command is not available.`, 
-                        ephemeral: true 
-                    });
+                    return await interaction.reply({
+                        content: `${EMOJIS.WARNING} This command is not available.`,
+                        ephemeral: true
+                    }).catch(() => {});
                 }
 
                 try {
+                    // Let the command handle its own reply/defer logic.
                     await command.run(client, interaction);
-                    // If the command ran successfully, we need to edit the deferred reply.
-                    // If the command already replied/followed up, this will be ignored.
-                    if (!interaction.replied && !interaction.deferred) {
-                        // This should not happen if deferReply is called, but as a fallback
-                        await interaction.editReply({ content: `${EMOJIS.CHECK} Command executed successfully.`, ephemeral: true }).catch(() => {});
-                    }
                 } catch (error) {
                     console.error(`Error executing ${interaction.commandName}:`, error);
-                    const errorMsg = { content: `${EMOJIS.WARNING} There was an error while executing this command!`, ephemeral: true };
-                    if (interaction.deferred) {
-                        await interaction.editReply(errorMsg);
-                    } else if (interaction.replied) {
-                        await interaction.followUp(errorMsg);
+                    const errorMsg = {
+                        content: `${EMOJIS.WARNING} There was an error while executing this command!`,
+                        ephemeral: true
+                    };
+
+                    // Check interaction state before replying to prevent crashes.
+                    if (interaction.replied || interaction.deferred) {
+                        await interaction.followUp(errorMsg).catch(err => console.error("Error in followUp:", err));
                     } else {
-                        await interaction.reply(errorMsg);
+                        await interaction.reply(errorMsg).catch(err => console.error("Error in reply:", err));
                     }
                 }
                 return;

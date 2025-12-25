@@ -19,10 +19,19 @@ module.exports = {
    * @param {CommandInteraction} interaction
    */
   run: async (client, interaction) => {
-    // Code
-    interaction.editReply({
-      content: `> Pong \`${client.ws.ping}\``,
-      ephemeral: true,
-    });
+    try {
+      await interaction.reply({
+        content: `> Pong \`${client.ws.ping}ms\``,
+        ephemeral: true,
+      });
+    } catch (error) {
+      console.error("Error in ping command:", error);
+      if (!interaction.replied) {
+        await interaction.reply({
+          content: "An error occurred while fetching the ping.",
+          ephemeral: true,
+        }).catch(() => {});
+      }
+    }
   },
 };

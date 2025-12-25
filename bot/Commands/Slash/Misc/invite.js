@@ -23,6 +23,19 @@ module.exports = {
 
 
   run: async (client, interaction) => {
-    await interaction.reply({ content: "Thank you for using our bot! 🙌\nInvite the bot to your server: [Invite Link](https://discord.com/oauth2/authorize?client_id=1220005260857311294&permissions=537250992&integration_type=0&scope=bot+applications.commands)\nNeed help? Join our support server: [Support Server](https://discord.gg/6FjFYStz5a) ", ephemeral: true });
+    try {
+      await interaction.reply({
+        content: "Thank you for using our bot! 🙌\nInvite the bot to your server: [Invite Link](https://discord.com/oauth2/authorize?client_id=1220005260857311294&permissions=537250992&integration_type=0&scope=bot+applications.commands)\nNeed help? Join our support server: [Support Server](https://discord.gg/6FjFYStz5a) ",
+        ephemeral: true
+      });
+    } catch (error) {
+      console.error("Error in invite command:", error);
+      if (!interaction.replied) {
+        await interaction.reply({
+          content: "An error occurred while generating the invite link.",
+          ephemeral: true,
+        }).catch(() => {});
+      }
+    }
   },
 };

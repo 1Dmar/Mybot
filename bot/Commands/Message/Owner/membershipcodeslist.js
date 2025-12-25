@@ -1,41 +1,34 @@
-const { CommandInteraction, ApplicationCommandType, PermissionFlagsBits, Client, EmbedBuilder } = require("discord.js");
+const {
+  Message,
+  PermissionFlagsBits,
+  Client,
+  EmbedBuilder,
+} = require("discord.js");
 const schema = require("../../../Models/Code");
 const moment = require("moment");
 
 module.exports = {
   name: "mscodeslist",
-  description: "List saved, available, and unused membership codes",
+  description: `List saved, available, and unused membership codes`,
   userPermissions: PermissionFlagsBits.SendMessages,
   botPermissions: PermissionFlagsBits.SendMessages,
   category: "Owner",
-  type: ApplicationCommandType.ChatInput,
-  type1: "slash",
-  run: async (client, interaction) => {
-    if (interaction.user.id !== "804999528129363998" && interaction.user.id !== "1071690719418396752") {
-      return interaction.reply({
+  type1: "message",
+  run: async (client, message, args, prefix) => {
+    if (message.author.id !== "804999528129363998" && message.author.id !== "1071690719418396752") {
+      return message.reply({
         content: "You are not authorized to use this command.",
-        ephemeral: true,
       });
     }
 
-    await interaction.deferReply({
-      ephemeral: true
-    });
-
     try {
       const codes = await schema.find({
-        expiresAt: {
-          $gte: Date.now()
-        },
-        used: {
-          $ne: true
-        }
+        expiresAt: { $gte: Date.now() },
+        used: { $ne: true }
       });
 
       if (!codes.length) {
-        return interaction.editReply({
-          content: "No unused codes available."
-        });
+        return message.reply("No unused codes available.");
       }
 
       const pages = [];
@@ -59,21 +52,14 @@ module.exports = {
           .setTitle(`Available Unused Codes (Page ${i + 1}/${pages.length})`)
           .setDescription(page)
           .setFooter({
-            text: `To redeem, use /claim <code>`
+            text: `To redeem, use ${prefix}claim <code>`
           });
-        await interaction.followUp({
-          embeds: [embed],
-          ephemeral: true
-        });
+        await message.channel.send({ embeds: [embed] });
       }
 
     } catch (error) {
-      console.error("Error in mscodeslist command:", error);
-      if (interaction.deferred) {
-        await interaction.editReply({
-          content: "An error occurred while fetching the codes.",
-        }).catch(() => {});
-      }
+      console.error("Error in mscodeslist message command:", error);
+      await message.reply("An error occurred while fetching the codes.").catch(() => {});
     }
   },
 };

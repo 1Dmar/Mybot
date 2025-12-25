@@ -17,9 +17,19 @@ module.exports = {
    * @param {String} prefix
    */
   run: async (client, message, args, prefix) => {
-    // Code
-    message.reply({
-      content: `> Pong \`${client.ws.ping}\``,
-    });
+    try {
+      const msg = await message.reply({
+        content: "Calculating ping...",
+      });
+      const latency = msg.createdTimestamp - message.createdTimestamp;
+      await msg.edit({
+        content: `> Pong \`${client.ws.ping}ms\`\n> Latency: \`${latency}ms\``,
+      });
+    } catch (error) {
+      console.error("Error in ping message command:", error);
+      await message.reply({
+        content: "An error occurred while calculating the ping.",
+      }).catch(() => {});
+    }
   },
 };

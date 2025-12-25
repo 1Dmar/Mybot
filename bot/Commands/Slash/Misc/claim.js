@@ -6,7 +6,7 @@ const {
 } = require("discord.js");
 const moment = require("moment");
 const Code = require("../../../Models/Code");
-const Server = require("../../../Models/User"); // تأكد من أن هذا المسار صحيح
+const Membership = require("../../../Models/User");
 
 module.exports = {
   name: "claim",
@@ -15,98 +15,116 @@ module.exports = {
   botPermissions: PermissionFlagsBits.SendMessages,
   category: "Misc",
   type: ApplicationCommandType.ChatInput,
-  options: [
-    {
-      name: 'code',
-      description: 'The membership code to redeem',
-      type: 3, // String type
-      required: true,
-    }
-  ],
-  run: async (client, interaction, args) => {
-    const code = interaction.options.getString('code');
-    const guildId = interaction.guild.id;
-    const guildName = interaction.guild.name;
-
-    let server = await Server.findOne({
-      Id: guildId,
+  options: [{
+    name: 'code',
+    description: 'The membership code to redeem',
+    type: 3, // String type
+    required: true,
+  }],
+  run: async (client, interaction) => {
+    await interaction.deferReply({
+      ephemeral: true
     });
 
-    if (!code) {
-      return interaction.reply({
-        content: `**Please specify the code you want to redeem!**`,
-        ephemeral: true,
+    try {
+      const code = interaction.options.getString('code');
+      const guildId = interaction.guild.id;
+      const guildName = interaction.guild.name;
+
+      let server = await Membership.findOne({
+        Id: guildId,
       });
-    } else if (server && server.ismembership) {
-      return interaction.reply({
-        content: `**> This server is already in membership mode**`,
-        ephemeral: true,
-      });
-    } else {
-      const membership = await Code.findOne({
+
+      if (server && server.ismembership) {
+        return interaction.editReply({
+          content: `**> This server is already in membership mode**`,
+        });
+      }
+
+      const membershipCode = await Code.findOne({
         code: code.toUpperCase(),
       });
 
-      if (membership) {
-        const expires = moment(membership.expiresAt).format("dddd, MMMM Do YYYY HH:mm:ss");
-
-        if (!server) {
-          server = new Server({
-            Id: guildId,
-            ismembership: false,
-            membership: {
-              redeemedBy: [],
-              redeemedAt: null,
-              expiresAt: null,
-              plan: null,
-            },
-          });
-        }
-
-        server.ismembership = true;
-        server.membership.redeemedBy.push({
-          id: guildId,
-          tag: guildName,
+      if (!membershipCode) {
+        return interaction.editReply({
+          content: `**The code is invalid. Please try again using a valid one!**`,
         });
-        server.membership.redeemedAt = Date.now();
-        server.membership.expiresAt = membership.expiresAt;
-        server.membership.plan = membership.plan;
+      }
 
-        await server.save().catch((error) => {
-          console.error(`Failed to save server: ${error}`);
+      if (membershipCode.used) {
+        return interaction.editReply({
+          content: `**This code has already been used.**`,
         });
+      }
 
-        membership.used = true;
-        await membership.save().catch((error) => {
-          console.error(`Failed to save membership: ${error}`);
+      const expires = moment(membershipCode.expiresAt).format("dddd, MMMM Do YYYY HH:mm:ss");
+
+      if (!server) {
+        server = new Membership({
+          Id: guildId,
+          ismembership: false,
+          membership: {
+            redeemedBy: [],
+          },
         });
+      }
 
-        const targetRoom = await interaction.client.channels.fetch('1273517280747065427');
-        if (!targetRoom) return console.error('Invalid target room ID!');
+      server.ismembership = true;
+      server.membership.redeemedBy.push({
+        id: guildId,
+        tag: guildName
+      });
+      server.membership.redeemedAt = Date.now();
+      server.membership.expiresAt = membershipCode.expiresAt;
+      server.membership.plan = membershipCode.plan;
+      await server.save();
 
+      membershipCode.used = true;
+      await membershipCode.save();
+
+      const logChannelId = '1273517280747065427';
+      const logChannel = await client.channels.fetch(logChannelId).catch(() => null);
+      if (logChannel) {
         const embed = new EmbedBuilder()
           .setColor(0xefc75e)
-          .setTitle(`New code claimer has been saved from ${guildName}`)
-          .addFields(
-            { name: 'Server Id', value: `( ${guildId} )`, inline: true },
-            { name: 'Code', value: ` \`${code}\` `, inline: true },
-            { name: 'Plan', value: ` ${membership.plan} `, inline: true },
-            { name: 'Redeem By', value: ` ${interaction.user.tag} `, inline: true },
-            { name: 'Redeem At', value: ` ${moment().format('dddd, MMMM Do YYYY HH:mm:ss') }`, inline: true },
-          )
+          .setTitle(`New Code Claimed: ${guildName}`)
+          .addFields({
+            name: 'Server ID',
+            value: `\`${guildId}\``,
+            inline: true
+          }, {
+            name: 'Code',
+            value: `\`${code}\``,
+            inline: true
+          }, {
+            name: 'Plan',
+            value: membershipCode.plan,
+            inline: true
+          }, {
+            name: 'Redeemed By',
+            value: interaction.user.tag,
+            inline: true
+          }, {
+            name: 'Expires At',
+            value: expires,
+            inline: true
+          }, )
           .setTimestamp();
-
-        await targetRoom.send({ embeds: [embed] });
-
-        return interaction.reply({
-          content: `**You have successfully redeemed membership!**\n\n\`Expires at: ${expires}\``,
-          ephemeral: true,
+        await logChannel.send({
+          embeds: [embed]
         });
-      } else {
-        return interaction.reply({
-          content: `**The code is invalid. Please try again using a valid one!**`,
-          ephemeral: true,
-        });
+      }
+
+      await interaction.editReply({
+        content: `**You have successfully redeemed membership!**\n\n\`Expires at: ${expires}\``,
+      });
+
+    } catch (error) {
+      console.error("Error in claim command:", error);
+      if (!interaction.replied) {
+        await interaction.editReply({
+          content: "An error occurred while processing your request.",
+        }).catch(() => {});
       }
     }
   },

@@ -4,82 +4,96 @@ const voucher_codes = require("voucher-code-generator");
 const schema = require("../../../Models/Code");
 
 module.exports = {
-  name: "sendfreecodes",
-  description: "Generate membership codes and send them",
+  name: "sendfreecode", // Renamed for clarity
+  description: "Generate a free membership code and send it to a user.",
   userPermissions: PermissionFlagsBits.Administrator,
   botPermissions: PermissionFlagsBits.SendMessages,
   category: "Owner",
   type: ApplicationCommandType.ChatInput,
-  type1: "slash",
-  run: async (client, interaction, args) => {
-    if (interaction.user.id !== "804999528129363998" && interaction.user.id !== "1071690719418396752") return;
+  options: [{
+    name: 'user',
+    description: 'The user to send the code to.',
+    type: 6, // USER type
+    required: true,
+  }, {
+    name: 'plan',
+    description: 'The plan for the code (e.g., weekly, monthly).',
+    type: 3, // STRING type
+    required: true,
+  }],
+  run: async (client, interaction) => {
+    if (interaction.user.id !== "804999528129363998" && interaction.user.id !== "1071690719418396752") {
+      return interaction.reply({
+        content: "You are not authorized to use this command.",
+        ephemeral: true,
+      });
+    }
 
-    const logChannelId = '1058107844878147696'; // استبدل بمعرف القناة الخاص باللوق
+    await interaction.deferReply({
+      ephemeral: true
+    });
 
-    client.guilds.cache.forEach(async (guild) => {
-      try {
-        const owner = await guild.fetchOwner();
-        const code = voucher_codes.generate({ pattern: "####-#####-###-####" }).toString().toUpperCase();
-        const expiresAt = Date.now() + 86400000 * 7; // أسبوع
+    try {
+      const user = interaction.options.getUser('user');
+      const plan = interaction.options.getString('plan').toLowerCase();
+      const plans = {
+        daily: 86400000,
+        weekly: 86400000 * 7,
+        monthly: 86400000 * 30,
+        yearly: 86400000 * 365
+      };
 
-        await schema.create({
-          code: code,
-          plan: 'custom',
-          expiresAt: expiresAt,
+      if (!plans[plan]) {
+        return interaction.editReply({
+          content: `Invalid plan. Available plans: \`${Object.keys(plans).join(", ")}\``
+        });
+      }
+
+      const expiresAt = Date.now() + plans[plan];
+      const code = voucher_codes.generate({
+        pattern: "####-#####-###-####"
+      })[0].toUpperCase();
+
+      await schema.create({
+        code,
+        plan,
+        expiresAt,
+      });
+
+      const embed = new EmbedBuilder()
+        .setColor('Blurple')
+        .setTitle('Your Free Membership Code!')
+        .setDescription(`Here is your free \`${plan}\` membership code, courtesy of the bot owner.`)
+        .addFields({
+          name: 'Your Code',
+          value: `\`\`\`${code}\`\`\``
+        }, {
+          name: 'Expires',
+          value: `<t:${Math.floor(expiresAt / 1000)}:R>`
+        })
+        .setFooter({
+          text: `To redeem, use /claim in a server with the bot.`
         });
 
-        const embed = new EmbedBuilder()
-          .setColor('Blurple')
-          .setTitle(`Generated Membership Code By ${interaction.user.username}`)
-          .setDescription(`\`\`\`${code}\`\`\``)
-          .addFields([{ name: 'Expires At', value: `<t:${Math.floor(expiresAt / 1000)}:F>` }])
-          .setFooter({ text: `To redeem, use your bot's redeem command (!claim \`\`\`${code}\`\`\`)` });
+      await user.send({
+        embeds: [embed]
+      });
+      await interaction.editReply({
+        content: `Successfully sent a \`${plan}\` code to ${user.tag}.`
+      });
 
-        let recipient = null;
-
-        try {
-          await owner.send({ embeds: [embed] });
-          recipient = owner.user;
-          console.log(`Sent code to ${owner.user.tag} (${owner.id})`);
-        } catch (error) {
-          console.error(`Could not send code to the owner of ${guild.name}:`, error);
-
-          const admin = guild.members.cache.find(member => member.permissions.has(PermissionFlagsBits.Administrator));
-          if (admin) {
-            try {
-              await admin.send({ embeds: [embed] });
-              recipient = admin.user;
-              console.log(`Sent code to ${admin.user.tag} (${admin.id})`);
-            } catch (adminError) {
-              console.error(`Could not send code to an admin of ${guild.name}:`, adminError);
-            }
-          } else {
-            console.error(`No admin found in ${guild.name}`);
-          }
-        }
-
-        if (recipient) {
-          const logEmbed = new EmbedBuilder()
-            .setColor('Green')
-            .setTitle(`Code Sent`)
-            .setDescription(`A code was successfully sent.`)
-            .addFields([
-              { name: 'Guild', value: guild.name, inline: true },
-              { name: 'Recipient', value: recipient.tag, inline: true },
-              { name: 'Code', value: code, inline: false },
-            ])
-            .setTimestamp();
-
-          const logChannel = client.channels.cache.get(logChannelId);
-          if (logChannel && logChannel.isTextBased()) {
-            logChannel.send({ embeds: [logEmbed] });
-          } else {
-            console.error(`Log channel not found or not a text channel.`);
-          }
-        }
-      } catch (fetchError) {
-        console.error(`Could not fetch owner for ${guild.name}:`, fetchError);
+    } catch (error) {
+      console.error("Error in sendfreecode command:", error);
+      if (error.code === 50007) { // Cannot send messages to this user
+        return interaction.editReply({
+          content: "Failed to send the code. The user may have DMs disabled."
+        });
       }
-    });
+      if (interaction.deferred) {
+        await interaction.editReply({
+          content: "An error occurred while sending the code."
+        }).catch(() => {});
+      }
+    }
   },
 };

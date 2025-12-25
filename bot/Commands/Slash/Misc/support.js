@@ -23,6 +23,19 @@ module.exports = {
 
 
   run: async (client, interaction) => {
-    await interaction.reply({ content: "Thank you for using our bot! 🙌\nIf you need assistance, join our support server: [Support Server](https://discord.gg/6FjFYStz5a)", ephemeral: true });
+    try {
+      await interaction.reply({
+        content: "Thank you for using our bot! 🙌\nIf you need assistance, join our support server: [Support Server](https://discord.gg/6FjFYStz5a)",
+        ephemeral: true
+      });
+    } catch (error) {
+      console.error("Error in support command:", error);
+      if (!interaction.replied) {
+        await interaction.reply({
+          content: "An error occurred while generating the support link.",
+          ephemeral: true,
+        }).catch(() => {});
+      }
+    }
   },
 };

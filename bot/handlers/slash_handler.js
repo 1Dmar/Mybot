@@ -47,34 +47,44 @@ module.exports = async (client) => {
 
         // Register commands
         client.once("ready", async () => {
+            if (!client.user) {
+                console.error("❌ Client user is not available for slash command registration.");
+                return;
+            }
+
+            const rest = new REST({ version: "10" }).setToken(token);
+            const clientId = client.user.id;
+
             try {
-                const rest = new REST({ version: "10" }).setToken(token);
-                const clientId = '1220005260857311294';// client.user.id;
+                console.log(`🔄 Started refreshing ${allCommands.length} application (/) commands.`);
 
-                console.log(`🔄 Registering slash commands for ${client.user.tag}...`);
-
-                // Try guild registration first for faster updates (optional)
-                const GUILD_ID = process.env.TEST_GUILD_ID || "1226151054178127872";
-                
-                try {
-                    await rest.put(
-                        Routes.applicationGuildCommands(clientId, GUILD_ID),
-                        { body: allCommands }
-                    );
-                    console.log(`🏰 Registered commands for guild: ${GUILD_ID}`);
-                } catch (e) {
-                    console.warn(`⚠️ Guild registration failed: ${e.message}`);
+                // Guild-specific registration (for testing)
+                const guildId = process.env.TEST_GUILD_ID;
+                if (guildId) {
+                    try {
+                        await rest.put(
+                            Routes.applicationGuildCommands(clientId, guildId),
+                            { body: allCommands }
+                        );
+                        console.log(`✅ Successfully reloaded commands for guild: ${guildId}`);
+                    } catch (err) {
+                        console.error(`❌ Failed to register commands for guild ${guildId}:`, err);
+                    }
                 }
 
                 // Global registration
-                await rest.put(
-                    Routes.applicationCommands(clientId),
-                    { body: allCommands }
-                );
-                console.log(`🌍 Registered commands globally.`);
+                try {
+                    await rest.put(
+                        Routes.applicationCommands(clientId),
+                        { body: allCommands }
+                    );
+                    console.log(`🌍 Successfully registered commands globally.`);
+                } catch (err) {
+                    console.error("❌ Failed to register global commands:", err);
+                }
 
             } catch (error) {
-                console.error("❌ Slash Command Registration Error:", error);
+                console.error("❌ An unexpected error occurred during slash command registration:", error);
             }
         });
 
