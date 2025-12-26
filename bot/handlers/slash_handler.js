@@ -68,8 +68,8 @@ module.exports = async (client) => {
                         );
                         console.log(`✅ Successfully reloaded commands for guild: ${guildId}`);
                     } catch (err) {
-                        if (err.code === 20012) {
-                            console.error("❌ Critical: The bot was invited to the test guild without the 'applications.commands' scope. Please re-invite the bot with the correct scope to enable slash command registration.");
+                        if (err.code === 50001) { // Discord API Error: Missing Access
+                            console.warn(`⚠️  Warning: Failed to register commands for guild ${guildId} due to 'Missing Access'. This can happen if the bot was invited to that server without the 'applications.commands' scope. The bot will continue to register commands globally.`);
                         } else {
                             console.error(`❌ Failed to register commands for guild ${guildId}:`, err);
                         }
