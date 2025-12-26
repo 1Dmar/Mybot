@@ -1,3 +1,6 @@
-
+#!/bin/bash
+kill -9 $(lsof -t -i:10000) 2>/dev/null || true
 chmod +x ./cloudflared
-./cloudflared tunnel run --token eyJhIjoiY2Y1YTNjNDA3YTBlNWVkNjY2MzFjNWQ2ZWU4ZDdjMGMiLCJ0IjoiNmFlNjY3ZmEtZDRmMC00YjBmLTgyZDItYTc5MzgyMjE1MWEyIiwicyI6IllUSTFaVFV3T0dVdFpEVmpaaTAwTkRVMExXSmtOekV0WkdJellXWTFOekV6T0RrMCJ9| npm i canvas | node server.js
+./cloudflared tunnel run --token eyJhIjoiY2Y1YTNjNDA3YTBlNWVkNjY2MzFjNWQ2ZWU4ZDdjMGMiLCJ0IjoiNmFlNjY3ZmEtZDRmMC00YjBmLTgyZDItYTc5MzgyMjE1MWEyIiwicyI6IllUSTFaVFV3T0dVdFpEVmpaaTAwTkRVMExXSmtOekV0WkdJellXWTFOekV6T0RrMCJ9 &
+npm i canvas
+node server.js
