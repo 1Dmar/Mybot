@@ -68,7 +68,11 @@ module.exports = async (client) => {
                         );
                         console.log(`✅ Successfully reloaded commands for guild: ${guildId}`);
                     } catch (err) {
-                        console.error(`❌ Failed to register commands for guild ${guildId}:`, err);
+                        if (err.code === 20012) {
+                            console.error("❌ Critical: The bot was invited to the test guild without the 'applications.commands' scope. Please re-invite the bot with the correct scope to enable slash command registration.");
+                        } else {
+                            console.error(`❌ Failed to register commands for guild ${guildId}:`, err);
+                        }
                     }
                 }
 
@@ -80,7 +84,11 @@ module.exports = async (client) => {
                     );
                     console.log(`🌍 Successfully registered commands globally.`);
                 } catch (err) {
-                    console.error("❌ Failed to register global commands:", err);
+                    if (err.code === 20012) {
+                        console.error("❌ Critical: The bot was invited without the 'applications.commands' scope. Please re-invite the bot with the correct scope to enable slash command registration.");
+                    } else {
+                        console.error("❌ Failed to register global commands:", err);
+                    }
                 }
 
             } catch (error) {
