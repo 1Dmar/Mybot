@@ -33,6 +33,7 @@ function cooldown(message, cmd) {
 module.exports = {
   name: 'messageCreate',
   async execute(message) {
+    console.log(`[DEBUG] messageCreate event received from user ${message.author.tag} in channel ${message.channel.id}`);
     const client = message.client;
     if (message.author.bot || !message.guild || !message.content) return;
 
