@@ -50,28 +50,11 @@ const webhookClient = new WebhookClient({
   id: '1322151531260284979', token: 'FsQoCxU3C782YYS0SRKNTPKRi8NIgm1hT_JfliwHcgZ4q5M7t586HRArJD9PsnEbszjp'
 });
 
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildMembers
-    ]
-});
+module.exports = (client) => {
+  // All routes and logic will use the passed 'client' object
+  // No new clients are created here
 
-const client1 = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildMembers
-    ],
-    partials: [Partials.Channel]
-});
-
-const DISCORD_CLIENT_ID= BigInt(1130577557461401622).toString();
+  const DISCORD_CLIENT_ID = BigInt(1130577557461401622).toString();
 const DISCORD_GUILD_ID=BigInt(1226151054178127872).toString();
 const MODMAIL_CATEGORY_ID="1273517241622593558";
 const newCategoryId = "1273517236610404452";
@@ -90,31 +73,9 @@ useNewUrlParser: true,
     console.error('Error connecting to MongoDB:', error.message);
   });
   
-let cpuUsagePercent = 0;
-client.on("ready", async () => {
-  try {
-    console.log(`${client.user.username} is Ready`);
-    cpuUsagePercent = 0;
-
-    const stats = await pidusage(process.pid);
-    cpuUsagePercent = stats.cpu;
-
-    client1.user.setStatus("online");
-
-    const activities = [
-      { name: "Moddy | New update! 🚀", type: ActivityType.Playing },
-      { name: "Moddy | Powered by ProMcBot! 🔥", type: ActivityType.Playing },
-    ];
-
-    let i = 0;
-    setInterval(() => {
-      client1.user.setActivity(activities[i]);
-      i = (i + 1) % activities.length;
-    }, 10000);
-  } catch (error) {
-    console.error('Error in ready event:', error);
-  }
-});
+  let cpuUsagePercent = 0;
+  // Redundant ready event and client1 logic removed.
+  // This is handled by the main client in bot/index.js
 
 app.use(session({
   secret: "nfJ90bf5X2VnFsU8sLGgvZqcDA1Ce9A3",
@@ -1551,203 +1512,8 @@ app.get("/tickets/:ticketId/messages", (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard', 'pages', 'ticket.html'));
 });
 
-client1.on("messageCreate", async (message) => {
-  try {
-    if (message.author.bot) return;
-    if (message.channel.type === ChannelType.DM) {
-      const userId = message.author.id;
-      const guild = await client1.guilds.fetch(DISCORD_GUILD_ID.toString()).catch(() => null);
-      if (!guild) {
-        console.error("🔴 Bot is not in the specified guild");
-        return;
-      }
-
-      let ticketDoc = await findOpenTicketByUser(userId);
-      let channel;
-      const ticketId = nanoid(8);
-      const user1 = await client1.users.fetch(userId).catch(() => null);
-
-      if (!ticketDoc) {
-        await message.react('1378995321601785887');
-        await user1.send({
-          embeds: [
-            new EmbedBuilder()
-              .setColor("#0099ff")
-              .setTitle("ProMcBot Support – ModMail")
-              .setDescription(`Thank you for creating a new mail, a staff member should respond to your ticket anytime soon! (${ticketId})`)
-              .setTimestamp(),
-          ],
-        });
-
-        channel = await guild.channels.create({
-          name: `modmail-${ticketId}`,
-          type: ChannelType.GuildText,
-          parent: MODMAIL_CATEGORY_ID,
-          permissionOverwrites: [
-            {
-              id: guild.roles.everyone.id,
-              deny: [PermissionsBitField.Flags.ViewChannel],
-            },
-            {
-              id: message.author.id,
-              allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-            },
-          ],
-        });
-
-        const newTicket = new Ticket({
-          ticketId,
-          userId,
-          channelId: channel.id,
-          status: "open",
-          createdAt: new Date(),
-        });
-        await newTicket.save();
-        ticketDoc = newTicket.toObject();
-
-        await channel.send({
-          embeds: [
-            {
-              title: "🆕 New ModMail Ticket",
-              description: `User <@${userId}> opened a ticket.`,
-              color: 0xffcc00,
-              timestamp: new Date(),
-              footer: { text: `Ticket ID: ${ticketId}` },
-            },
-          ],
-        });
-      } else {
-        channel = await guild.channels.fetch(ticketDoc.channelId).catch(() => null);
-        if (!channel) {
-          console.error("🔴 Failed to fetch existing ticket channel; it may have been deleted.");
-          return;
-        }
-      }
-
-      await message.react('1378995321601785887');
-      const dmEmbed = {
-        author: {
-          name: `>> ${message.author.tag} [Member]`,
-          icon_url: message.author.displayAvatarURL({ dynamic: true }),
-        },
-        thumbnail: {
-          url: message.author.displayAvatarURL({ dynamic: true }),
-        },
-        description: message.content,
-        color: 0x0099ff,
-        footer: { text: `User ID: ${userId}` },
-        timestamp: new Date(),
-      };
-      await channel.send({ embeds: [dmEmbed] });
-
-      await new Message({
-        ticket: ticketDoc.ticketId,
-        authorId: userId,
-        content: message.content,
-        timestamp: new Date(),
-        direction: "user",
-      }).save();
-    }
-  } catch (error) {
-    console.error('Error in messageCreate event:', error);
-  }
-});
-
-client1.on("messageCreate", async (message) => {
-  try {
-    if (message.author.bot) return;
-    if (!message.guild || message.guild.id !== DISCORD_GUILD_ID.toString()) return;
-    if (message.channel.parentId !== MODMAIL_CATEGORY_ID.toString()) return;
-
-    const ticketDoc = await findOpenTicketByChannel(message.channel.id);
-    if (!ticketDoc) return;
-
-    const { ticketId, userId } = ticketDoc;
-
-    if (message.content.trim().toLowerCase() === "!close") {
-      await Ticket.findOneAndUpdate(
-        { ticketId, status: "open" },
-        { status: "closed", closedAt: new Date() }
-      );
-
-      const user = await client1.users.fetch(userId).catch(() => null);
-      if (user) {
-        const closeEmbed = new EmbedBuilder()
-          .setColor("#ff5555")
-          .setTitle(`Your mail has been closed. (${ticketId})`)
-          .setDescription(`**${message.author.username}** has closed your mail since it's marked as completed. Thank you for using our support!`)
-          .setFooter({ text: `Ticket ID: ${ticketId}` })
-          .setTimestamp();
-        await user.send({ embeds: [closeEmbed] }).catch(() => {
-          console.warn(`Could not DM user ${userId} after closing ticket.`);
-        });
-      }
-
-      await message.channel.send({
-        embeds: [{
-          description: "✅ Ticket has been closed. This channel will be moved to new category in 5 seconds.",
-          color: 0x00cc66,
-          timestamp: new Date(),
-        }],
-      });
-
-      setTimeout(async () => {
-        await message.channel.setParent(newCategoryId.toString(), { lockPermissions: false })
-          .then(updatedChannel => {
-            return updatedChannel.permissionOverwrites.set([
-              {
-                id: message.author.id,
-                deny: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
-              },
-              {
-                id: guild.roles.everyone,
-                deny: [PermissionsBitField.Flags.ViewChannel],
-              },
-            ]);
-          });
-        await message.channel.send({
-          embeds: [{
-            description: `✅ Ticket has been moved to Ticket Log.\nTo see ticket messages: http://promcbot.qzz.io/tickets/${ticketId}/messages`,
-            color: 0x00cc66,
-            timestamp: new Date(),
-          }],
-        });
-      }, 5000);
-      return;
-    }
-
-    const user = await client1.users.fetch(userId).catch(() => null);
-    if (user) {
-      await message.react('1378995321601785887');
-      const staffEmbed = {
-        author: {
-          name: `>> ${message.author.tag} [Moderator]`,
-          icon_url: message.author.displayAvatarURL({ dynamic: true }),
-        },
-        thumbnail: {
-          url: message.author.displayAvatarURL({ dynamic: true }),
-        },
-        description: message.content,
-        color: 0x43b581,
-        footer: { text: `From #${message.channel.name}` },
-        timestamp: new Date(),
-      };
-      await user.send({ embeds: [staffEmbed] }).catch(() => {
-        console.warn(`Failed to send DM to user ${userId}`);
-      });
-    }
-
-    await new Message({
-      ticket: ticketId,
-      authorId: message.author.id,
-      content: message.content,
-      timestamp: new Date(),
-      direction: "mod",
-    }).save();
-  } catch (error) {
-    console.error('Error in messageCreate event:', error);
-  }
-});
+  // Redundant messageCreate listeners removed.
+  // This is now handled by the main client's event handler.
 
 app.get('/:serverId/overview', async (req, res) => {
     const serverId = req.params.serverId;
@@ -1938,20 +1704,11 @@ app.get('/loading-auth', (req, res) => {
     res.sendFile(path.join(__dirname, '/dashboard/Loading/loading.html'));
 });
 
-app.use(express.static('public'));
-app.use(express.static(path.join(__dirname, 'dashboard')));
-app.use((req, res, next) => {
-    res.status(404).sendFile(path.join(__dirname, 'dashboard', '404', '404.html'));
-});
+  app.use(express.static('public'));
+  app.use(express.static(path.join(__dirname, 'dashboard')));
+  app.use((req, res, next) => {
+      res.status(404).sendFile(path.join(__dirname, 'dashboard', '404', '404.html'));
+  });
 
-//client.login(process.env.BOT_TOKEN);
-//client1.login(process.env.MAIL_TOKEN);
-
-//const PORT = process.env.PORT || 3000;
-/*server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});*/
-// أضف في نهاية الملف
-module.exports.app = app; // إذا كان لديك متغير app
-module.exports.client = client; // البوت الأول
-module.exports.client1 = client1; // البوت الثاني
+  return app;
+}
