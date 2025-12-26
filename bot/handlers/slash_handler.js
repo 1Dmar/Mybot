@@ -49,32 +49,21 @@ module.exports = async (client) => {
         client.once("ready", async () => {
             try {
                 const rest = new REST({ version: "10" }).setToken(token);
-                const clientId = '1220005260857311294';// client.user.id;
+                const clientId = client.user.id; // Use dynamic client ID
 
-                console.log(`🔄 Registering slash commands for ${client.user.tag}...`);
+                console.log(`[SLASH] Started refreshing ${allCommands.length} application (/) commands.`);
 
-                // Try guild registration first for faster updates (optional)
-                const GUILD_ID = process.env.TEST_GUILD_ID || "1226151054178127872";
-                
-                try {
-                    await rest.put(
-                        Routes.applicationGuildCommands(clientId, GUILD_ID),
-                        { body: allCommands }
-                    );
-                    console.log(`🏰 Registered commands for guild: ${GUILD_ID}`);
-                } catch (e) {
-                    console.warn(`⚠️ Guild registration failed: ${e.message}`);
-                }
-
-                // Global registration
-                await rest.put(
+                // The put method is used to fully refresh all commands in the guild with the current set.
+                // Use applicationCommands for global registration.
+                const data = await rest.put(
                     Routes.applicationCommands(clientId),
-                    { body: allCommands }
+                    { body: allCommands },
                 );
-                console.log(`🌍 Registered commands globally.`);
+
+                console.log(`[SLASH] Successfully reloaded ${data.length} application (/) commands globally.`);
 
             } catch (error) {
-                console.error("❌ Slash Command Registration Error:", error);
+                console.error("❌ Failed to register slash commands:", error);
             }
         });
 
