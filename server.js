@@ -38,4 +38,4 @@ mainApp.listen(PORT, () => {
 // تسجيل دخول البوتات
 if (bot1.client) bot1.client.login(process.env.BOT1_TOKEN);
 if (bot1.client1) bot1.client1.login(process.env.BOT1_1_TOKEN);
-if (bot2Client.login) bot2Client.login(process.env.BOT1_TOKEN);
+// The bot2Client (from /bot) handles its own login, so it's not called here.
