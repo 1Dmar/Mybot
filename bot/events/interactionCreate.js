@@ -278,36 +278,45 @@ module.exports = {
                             ephemeral: true
                         });
                     }
-                    client.tempData[interaction.user.id].wallpaper = selectedWallpaper;
 
-                    const previewBuffer = await generateServerStatusImage(
-                        client.tempData[interaction.user.id].serverData,
-                        selectedWallpaper,
-                        interaction,
-                        true // isPreview
-                    );
+                    const userData = client.tempData[interaction.user.id];
+                    if (!userData || !userData.serverData) {
+                        return interaction.editReply({
+                            content: `${EMOJIS.WARNING} ${await getTranslatedMessage(interaction.guild?.id, "NO_SERVER_DATA") || "No server data found. Please start over."}`,
+                            ephemeral: true
+                        });
+                    }
 
-                    const attachment = new AttachmentBuilder(previewBuffer, { name: `wallpaper_preview_${selectedIndex}.png` });
+                    const serverData = { ...userData.serverData, wallpaper: selectedWallpaper };
 
-                    const confirmButton = new ButtonBuilder()
-                        .setCustomId('confirmWallpaper')
-                        .setLabel(await getTranslatedMessage(interaction.guild?.id, "CONFIRM_WALLPAPER") || "Use This Wallpaper")
-                        .setStyle(ButtonStyle.Primary);
+                    try {
+                        const existingServer = await Serverdb.findOne({ serverId: serverData.serverId });
+                        if (existingServer) {
+                            await Serverdb.updateOne({ serverId: serverData.serverId }, serverData);
+                        } else {
+                            await Serverdb.create(serverData);
+                        }
 
-                    const chooseAnotherButton = new ButtonBuilder()
-                        .setCustomId('chooseAnotherWallpaper')
-                        .setLabel(await getTranslatedMessage(interaction.guild?.id, "CHOOSE_ANOTHER") || "Choose Another")
-                        .setStyle(ButtonStyle.Secondary);
+                        delete client.tempData[interaction.user.id];
 
-                    const buttonRow = new ActionRowBuilder().addComponents(confirmButton, chooseAnotherButton);
+                        const imageBuffer = await generateServerStatusImage(serverData, selectedWallpaper, interaction, false);
+                        const attachment = new AttachmentBuilder(imageBuffer, {
+                            name: `${serverData.serverName.replace(/[^a-zA-Z0-9]/g, '_')}_status.png`
+                        });
 
-                    const previewMessage = await getTranslatedMessage(interaction.guild?.id, "WALLPAPER_PREVIEW") || "Preview of your selected wallpaper:";
-                    await interaction.editReply({
-                        content: `${EMOJIS.INFORMATION} ${previewMessage}`,
-                        files: [attachment],
-                        components: [buttonRow],
-                        ephemeral: true
-                    });
+                        await interaction.editReply({
+                            content: `${EMOJIS.CHECK} ${await getTranslatedMessage(interaction.guild?.id, "SERVER_SAVED_SUCCESS") || "Server information saved successfully!"}`,
+                            files: [attachment],
+                            components: []
+                        });
+
+                    } catch (error) {
+                        console.error('Error saving server:', error);
+                        await interaction.editReply({
+                            content: `${EMOJIS.WARNING} ${await getTranslatedMessage(interaction.guild?.id, "SAVE_ERROR") || "Error saving server information."}`,
+                            ephemeral: true
+                        });
+                    }
                 }
             } else if (interaction.isModalSubmit() && interaction.customId === 'serverModal') {
                 await interaction.deferReply({ ephemeral: true });
@@ -408,124 +417,6 @@ module.exports = {
                         content: `${EMOJIS.INFORMATION} ${await getTranslatedMessage(interaction.guild?.id, "SELECT_WALLPAPER_DESCRIPTION") || "Please select a wallpaper for your server status image:"}`,
                         components: [wallpaperSelect],
                         ephemeral: true
-                    });
-                }
-            } else if (interaction.isButton()) {
-                if (interaction.customId === 'confirmWallpaper') {
-                    await interaction.deferReply({ ephemeral: true });
-
-                    const serverData = client.tempData[interaction.user.id].serverData;
-                    const wallpaper = client.tempData[interaction.user.id].wallpaper;
-
-                    const imageBuffer = await generateServerStatusImage(serverData, wallpaper, interaction, false);
-                    const attachment = new AttachmentBuilder(imageBuffer, {
-                        name: `${serverData.serverName.replace(/[^a-zA-Z0-9]/g, '_')}_status.png`
-                    });
-
-                    const confirmButton = new ButtonBuilder()
-                        .setCustomId('confirmServer')
-                        .setLabel(await getTranslatedMessage(interaction.guild?.id, "CONFIRM") || "Confirm")
-                        .setStyle(ButtonStyle.Primary);
-
-                    const cancelButton = new ButtonBuilder()
-                        .setCustomId('cancelServer')
-                        .setLabel(await getTranslatedMessage(interaction.guild?.id, "CANCEL") || "Cancel")
-                        .setStyle(ButtonStyle.Danger);
-
-                    const buttonRow = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
-
-                    await interaction.editReply({
-                        content: `${EMOJIS.INFORMATION} ${await getTranslatedMessage(interaction.guild?.id, "SERVER_STATUS_READY") || "Server status image ready!"}`,
-                        files: [attachment],
-                        components: [buttonRow],
-                        ephemeral: true
-                    });
-                } else if (interaction.customId === 'chooseAnotherWallpaper') {
-                    await interaction.deferReply({ ephemeral: true });
-
-                    const selectionCard = await generateWallpaperSelectionCard(WALLPAPERS, interaction);
-
-                    if (selectionCard) {
-                        const cardAttachment = new AttachmentBuilder(selectionCard, { name: 'wallpaper_selection.png' });
-
-                        const wallpaperOptions = WALLPAPERS.map((url, index) => ({
-                            label: `Wallpaper ${index + 1}`,
-                            description: `Select wallpaper #${index + 1}`,
-                            value: `wallpaper_${index}`
-                        }));
-
-                        const wallpaperSelect = new ActionRowBuilder()
-                            .addComponents(
-                                new StringSelectMenuBuilder()
-                                    .setCustomId('wallpaperSelect')
-                                    .setPlaceholder(await getTranslatedMessage(interaction.guild?.id, "SELECT_WALLPAPER") || 'Choose a wallpaper...')
-                                    .addOptions(wallpaperOptions.slice(0, 25))
-                            );
-
-                        await interaction.editReply({
-                            content: `${EMOJIS.INFORMATION} ${await getTranslatedMessage(interaction.guild?.id, "SELECT_WALLPAPER_DESCRIPTION") || "Please select a wallpaper for your server status image:"}`,
-                            files: [cardAttachment],
-                            components: [wallpaperSelect],
-                            ephemeral: true
-                        });
-                    } else {
-                        const wallpaperOptions = WALLPAPERS.map((url, index) => ({
-                            label: `Wallpaper ${index + 1}`,
-                            description: `Select wallpaper #${index + 1}`,
-                            value: `wallpaper_${index}`
-                        }));
-
-                        const wallpaperSelect = new ActionRowBuilder()
-                            .addComponents(
-                                new StringSelectMenuBuilder()
-                                    .setCustomId('wallpaperSelect')
-                                    .setPlaceholder(await getTranslatedMessage(interaction.guild?.id, "SELECT_WALLPAPER") || 'Choose a wallpaper...')
-                                    .addOptions(wallpaperOptions.slice(0, 25))
-                            );
-
-                        await interaction.editReply({
-                            content: `${EMOJIS.INFORMATION} ${await getTranslatedMessage(interaction.guild?.id, "SELECT_WALLPAPER_DESCRIPTION") || "Please select a wallpaper for your server status image:"}`,
-                            components: [wallpaperSelect],
-                            ephemeral: true
-                        });
-                    }
-                } else if (interaction.customId === 'confirmServer') {
-                    const serverData = client.tempData[interaction.user.id].serverData;
-
-                    if (!serverData) {
-                        return interaction.reply({
-                            content: `${EMOJIS.WARNING} ${await getTranslatedMessage(interaction.guild?.id, "NO_SERVER_DATA") || "No server data found. Please start over."}`,
-                            ephemeral: true
-                        });
-                    }
-
-                    try {
-                        const existingServer = await Serverdb.findOne({ serverId: serverData.serverId });
-
-                        if (existingServer) {
-                            await Serverdb.updateOne({ serverId: serverData.serverId }, serverData);
-                        } else {
-                            await Serverdb.create(serverData);
-                        }
-
-                        delete client.tempData[interaction.user.id];
-
-                        await interaction.update({
-                            components: [],
-                            content: `${EMOJIS.CHECK} ${await getTranslatedMessage(interaction.guild?.id, "SERVER_SAVED_SUCCESS") || "Server information saved successfully!"}`
-                        });
-                    } catch (error) {
-                        console.error('Error saving server:', error);
-                        await interaction.reply({
-                            content: `${EMOJIS.WARNING} ${await getTranslatedMessage(interaction.guild?.id, "SAVE_ERROR") || "Error saving server information."}`,
-                            ephemeral: true
-                        });
-                    }
-                } else if (interaction.customId === 'cancelServer') {
-                    delete client.tempData[interaction.user.id];
-                    await interaction.update({
-                        components: [],
-                        content: `${EMOJIS.WARNING} ${await getTranslatedMessage(interaction.guild?.id, "SETUP_CANCELLED") || "Setup cancelled."}`
                     });
                 }
             }
