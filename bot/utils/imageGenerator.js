@@ -1,6 +1,6 @@
 const Jimp = require('jimp');
 const path = require('path');
-const { safeAxiosGet } = require('./serverUtils');
+const { safeAxiosGet, checkServerStatus } = require('./serverUtils');
 
 function getMinecraftColor(code) {
     const colors = {
@@ -292,13 +292,19 @@ async function generateWallpaperSelectionCard(wallpapers, interaction) {
         const cardWidth = 600;
         const cardHeight = 400;
 
+        // Load fonts first
+        const font32 = await Jimp.loadFont(Jimp.FONT_SANS_32_WHITE);
+        const font16 = await Jimp.loadFont(Jimp.FONT_SANS_16_WHITE);
+        const font16Black = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
+
+
         const card = new Jimp(cardWidth, cardHeight, 0x2F3136FF);
         const titleBackground = new Jimp(cardWidth, 60, 0x7289DAFF);
         card.blit(titleBackground, 0, 0);
 
         const title = "Select a Wallpaper";
-        const titleWidth = Jimp.measureText(Jimp.FONT_SANS_32_WHITE, title);
-        card.print(Jimp.FONT_SANS_32_WHITE, (cardWidth - titleWidth) / 2, 15, title);
+        const titleWidth = Jimp.measureText(font32, title);
+        card.print(font32, (cardWidth - titleWidth) / 2, 15, title);
 
         const thumbnailSize = 100;
         const thumbnailsPerRow = 3;
@@ -349,7 +355,7 @@ async function generateWallpaperSelectionCard(wallpapers, interaction) {
                         }
                     }
                     card.blit(numberBg, x + thumbnailSize - 25, y + thumbnailSize - 25);
-                    card.print(Jimp.FONT_SANS_16_BLACK, x + thumbnailSize - 20, y + thumbnailSize - 20, `${i+1}`);
+                    card.print(font16Black, x + thumbnailSize - 20, y + thumbnailSize - 20, `${i+1}`);
                 } else {
                     throw new Error('Failed to load wallpaper');
                 }
@@ -357,13 +363,13 @@ async function generateWallpaperSelectionCard(wallpapers, interaction) {
                 console.log('Using placeholder for wallpaper', i+1, 'due to error:', error.message);
                 const placeholder = new Jimp(thumbnailSize, thumbnailSize, 0x7289DAFF);
                 card.blit(placeholder, x, y);
-                card.print(Jimp.FONT_SANS_16_WHITE, x + thumbnailSize/2 - 5, y + thumbnailSize/2 - 8, `${i+1}`);
+                card.print(font16, x + thumbnailSize/2 - 5, y + thumbnailSize/2 - 8, `${i+1}`);
             }
         }
 
         const instructionText = "Select a wallpaper from the menu below";
-        const instructionWidth = Jimp.measureText(Jimp.FONT_SANS_16_WHITE, instructionText);
-        card.print(Jimp.FONT_SANS_16_WHITE, (cardWidth - instructionWidth) / 2, cardHeight - 40, instructionText);
+        const instructionWidth = Jimp.measureText(font16, instructionText);
+        card.print(font16, (cardWidth - instructionWidth) / 2, cardHeight - 40, instructionText);
 
         return await card.getBufferAsync(Jimp.MIME_PNG);
     } catch (error) {
