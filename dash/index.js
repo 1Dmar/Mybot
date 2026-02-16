@@ -1486,7 +1486,7 @@ app.get('/', async (req, res) => {
     const totalGuilds = client.guilds.cache.size;
     
     function formatNumber(num) {
-        return num.toLocaleString();
+        return (num || 0).toLocaleString();
     }
     
     const guildsArray = client.guilds.cache.map(guild => guild);

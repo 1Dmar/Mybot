@@ -1,4 +1,12 @@
 {
+  "name": "mybot",
+  "version": "1.0.0",
+  "description": "Discord Bot with Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
