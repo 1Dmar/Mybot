@@ -21,6 +21,10 @@ module.exports = async (client) => {
       for (const cmd of commands) {
         const command = require(`../Commands/Message/${dir}/${cmd}`);
         if (command.name && command.type1) {
+          if (client.mcommands.has(command.name)) {
+            console.warn(`⚠️ Skipping duplicate message command: ${command.name} from ${cmd}`);
+            continue;
+          }
           client.mcommands.set(command.name, command);
           // إضافة الأمر إلى المصفوفة
           loadedCommands.push(command);
