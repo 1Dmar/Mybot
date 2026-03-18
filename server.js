@@ -21,5 +21,14 @@ mainApp.listen(PORT, () => {
 });
 
 // تسجيل دخول بوتات الداشبورد (لأنها معطلة في dash/index.js)
-if (dash.client) dash.client.login(process.env.BOT1_TOKEN).catch(err => console.error("Dash Bot 1 Login Failed:", err.message));
-if (dash.client1) dash.client1.login(process.env.BOT1_1_TOKEN).catch(err => console.error("Dash Bot 2 Login Failed:", err.message));
+if (dash.client && process.env.BOT1_TOKEN) {
+  dash.client.login(process.env.BOT1_TOKEN).catch(err => console.error("Dash Bot 1 Login Failed:", err.message));
+} else if (dash.client) {
+  console.warn("Dash Bot 1: BOT1_TOKEN is missing in environment variables.");
+}
+
+if (dash.client1 && process.env.BOT1_1_TOKEN) {
+  dash.client1.login(process.env.BOT1_1_TOKEN).catch(err => console.error("Dash Bot 2 Login Failed:", err.message));
+} else if (dash.client1) {
+  console.warn("Dash Bot 2: BOT1_1_TOKEN is missing in environment variables.");
+}

@@ -107,18 +107,22 @@ client.on("ready", async () => {
       console.error('خطأ في جلب استهلاك المعالج:', error);
     }
     
-    client1.user.setStatus("online");
+    if (client1.user) {
+        client1.user.setStatus("online");
 
-  const activities = [
-    { name: "Moddy | New update! 🚀", type: ActivityType.Playing },
-    { name: "Moddy | Powered by ProMcBot! 🔥", type: ActivityType.Playing }
-  ];
-  
-  let i = 0;
-  setInterval(() => {
-     client1.user.setActivity(activities[i]);
-    i = (i + 1) % activities.length;
-  }, 10000);
+        const activities = [
+            { name: "Moddy | New update! 🚀", type: ActivityType.Playing },
+            { name: "Moddy | Powered by ProMcBot! 🔥", type: ActivityType.Playing }
+        ];
+        
+        let i = 0;
+        setInterval(() => {
+            if (client1.user) {
+                client1.user.setActivity(activities[i]);
+                i = (i + 1) % activities.length;
+            }
+        }, 10000);
+    }
 });
 
 app.use(session({
