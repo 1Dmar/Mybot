@@ -13,6 +13,7 @@ const db = require('pro.db');
 const mongoose = require('mongoose');
 const DiscordStrategy = require('passport-discord').Strategy;
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const app = express.Router();
 const cors = require("cors");
 app.use(cors());
@@ -137,18 +138,20 @@ app.use(passport.session());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-    session({
-        secret: "nfJ90bf5X2VnFsU8sLGgvZqcDA1Ce9A3",
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            maxAge: 3 * 24 * 60 * 60 * 1000,
-            httpOnly: false,
-            secure: true,
-        },
-    })
-);
+app.use(session({
+    secret: "nfJ90bf5X2VnFsU8sLGgvZqcDA1Ce9A3",
+    resave: false,
+    saveUninitialized: false,
+    store: new MongoStore({
+        mongoUrl: process.env.MONGO_URL,
+        touchAfter: 24 * 3600 // Lazy session update
+    }),
+    cookie: {
+        maxAge: 3 * 24 * 60 * 60 * 1000,
+        httpOnly: false,
+        secure: true,
+    },
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());

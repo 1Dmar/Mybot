@@ -25,8 +25,8 @@ async function getTranslatedMessage(guildId, messageKey) {
 }
 
 module.exports = {
-  name: "setup_server",
-  description: `Setup the Minecraft server information`,
+  name: "setup_server_legacy",
+  description: `Setup the Minecraft server information (Legacy)`,
   userPermissions: PermissionFlagsBits.Administrator,
   botPermissions: PermissionFlagsBits.SendMessages,
   category: "Server",
