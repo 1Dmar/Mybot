@@ -44,25 +44,63 @@ module.exports.updateServerStatus = async (client, server, settings) => {
     .setTimestamp();
 
   try {
-    const channel = await client.channels.fetch(settings.statusChannelId);
+    // Validate channel ID exists
+    if (!settings.statusChannelId) {
+      console.warn(`Channel Error [${server.serverName}]: No channel ID configured`);
+      return;
+    }
+
+    const channel = await client.channels.fetch(settings.statusChannelId).catch(err => {
+      console.error(`Channel Error [${server.serverName}]: Failed to fetch channel - ${err.message}`);
+      return null;
+    });
+
+    if (!channel) {
+      console.warn(`Channel Error [${server.serverName}]: Channel not found or inaccessible`);
+      return;
+    }
+
+    // Check bot permissions in the channel
+    if (channel.guild && !channel.permissionsFor(client.user).has(['SendMessages', 'EmbedLinks'])) {
+      console.warn(`Channel Error [${server.serverName}]: Missing permissions (SendMessages/EmbedLinks)`);
+      return;
+    }
+
     if (settings.statusMessageId) {
       try {
-        const message = await channel.messages.fetch(settings.statusMessageId);
-        await message.edit({ embeds: [embed] });
-      } catch {
-        const newMessage = await channel.send({ embeds: [embed] });
-        settings.statusMessageId = newMessage.id;
-        await settings.save();
+        const message = await channel.messages.fetch(settings.statusMessageId).catch(() => null);
+        if (message) {
+          await message.edit({ embeds: [embed] }).catch(err => {
+            console.error(`Channel Error [${server.serverName}]: Failed to edit message - ${err.message}`);
+          });
+        } else {
+          // Message not found, send a new one
+          const newMessage = await channel.send({ embeds: [embed] }).catch(err => {
+            console.error(`Channel Error [${server.serverName}]: Failed to send message - ${err.message}`);
+            return null;
+          });
+          if (newMessage) {
+            settings.statusMessageId = newMessage.id;
+            await settings.save().catch(err => console.error(`Failed to save message ID: ${err.message}`));
+          }
+        }
+      } catch (err) {
+        console.error(`Channel Error [${server.serverName}]: Unexpected error - ${err.message}`);
       }
     } else {
-      const newMessage = await channel.send({ embeds: [embed] });
-      settings.statusMessageId = newMessage.id;
-      await settings.save();
+      const newMessage = await channel.send({ embeds: [embed] }).catch(err => {
+        console.error(`Channel Error [${server.serverName}]: Failed to send message - ${err.message}`);
+        return null;
+      });
+      if (newMessage) {
+        settings.statusMessageId = newMessage.id;
+        await settings.save().catch(err => console.error(`Failed to save message ID: ${err.message}`));
+      }
     }
 
     settings.lastUpdated = Date.now();
-    await settings.save();
+    await settings.save().catch(err => console.error(`Failed to update lastUpdated: ${err.message}`));
   } catch (error) {
-    console.error(`Channel Error [${server.serverName}]:`, error.message);
+    console.error(`Channel Error [${server.serverName}]: Unexpected error - ${error.message}`);
   }
 };

@@ -13,6 +13,7 @@ const db = require('pro.db');
 const mongoose = require('mongoose');
 const DiscordStrategy = require('passport-discord').Strategy;
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const app = express.Router();
 const cors = require("cors");
 app.use(cors());
@@ -107,18 +108,22 @@ client.on("ready", async () => {
       console.error('خطأ في جلب استهلاك المعالج:', error);
     }
     
-    client1.user.setStatus("online");
+    if (client1.user) {
+        client1.user.setStatus("online");
 
-  const activities = [
-    { name: "Moddy | New update! 🚀", type: ActivityType.Playing },
-    { name: "Moddy | Powered by ProMcBot! 🔥", type: ActivityType.Playing }
-  ];
-  
-  let i = 0;
-  setInterval(() => {
-     client1.user.setActivity(activities[i]);
-    i = (i + 1) % activities.length;
-  }, 10000);
+        const activities = [
+            { name: "Moddy | New update! 🚀", type: ActivityType.Playing },
+            { name: "Moddy | Powered by ProMcBot! 🔥", type: ActivityType.Playing }
+        ];
+        
+        let i = 0;
+        setInterval(() => {
+            if (client1.user) {
+                client1.user.setActivity(activities[i]);
+                i = (i + 1) % activities.length;
+            }
+        }, 10000);
+    }
 });
 
 app.use(session({
@@ -133,18 +138,20 @@ app.use(passport.session());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use(
-    session({
-        secret: "nfJ90bf5X2VnFsU8sLGgvZqcDA1Ce9A3",
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            maxAge: 3 * 24 * 60 * 60 * 1000,
-            httpOnly: false,
-            secure: true,
-        },
-    })
-);
+app.use(session({
+    secret: "nfJ90bf5X2VnFsU8sLGgvZqcDA1Ce9A3",
+    resave: false,
+    saveUninitialized: false,
+    store: new MongoStore({
+        mongoUrl: process.env.MONGO_URL,
+        touchAfter: 24 * 3600 // Lazy session update
+    }),
+    cookie: {
+        maxAge: 3 * 24 * 60 * 60 * 1000,
+        httpOnly: false,
+        secure: true,
+    },
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -1486,7 +1493,7 @@ app.get('/', async (req, res) => {
     const totalGuilds = client.guilds.cache.size;
     
     function formatNumber(num) {
-        return num.toLocaleString();
+        return (num || 0).toLocaleString();
     }
     
     const guildsArray = client.guilds.cache.map(guild => guild);

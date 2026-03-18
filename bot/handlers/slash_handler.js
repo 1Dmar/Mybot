@@ -28,6 +28,10 @@ module.exports = async (client) => {
                     const command = require(path.join(folderPath, file));
                     
                     if (command?.name && command?.description) {
+                        if (client.scommands.has(command.name)) {
+                            console.warn(`⚠️ Skipping duplicate slash command: ${command.name} from ${file}`);
+                            continue;
+                        }
                         client.scommands.set(command.name, command);
                         allCommands.push({
                             name: command.name,
@@ -49,7 +53,7 @@ module.exports = async (client) => {
         client.once("ready", async () => {
             try {
                 const rest = new REST({ version: "10" }).setToken(token);
-                const clientId = '1220005260857311294';// client.user.id;
+                const clientId = client.user.id;
 
                 console.log(`🔄 Registering slash commands for ${client.user.tag}...`);
 

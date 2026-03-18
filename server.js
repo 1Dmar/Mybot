@@ -2,40 +2,33 @@ require('dotenv-flow').config();
 const express = require('express');
 const mainApp = express();
 const keep_alive = require('./keep_alive.js');
-// جسر التوافق للمشروع الأول
-const bot1 = require('./dash/index');
-if (typeof bot1 === 'function') {
-  mainApp.use('/', bot1); // استخدم كـ router
-} else if (bot1.app && typeof bot1.app === 'function') {
-  mainApp.use('/', bot1.app); // استخدم التطبيق المدمج
+
+// Dashboard project
+const dash = require('./dash/index');
+if (dash.app && typeof dash.app === 'function') {
+  mainApp.use('/', dash.app); 
 }
 
-// جسر التوافق للمشروع الثاني 
-const bot2 = require('./bot/events/ready');
-const bot2Client = require('./bot/index');
-
-/*if (typeof bot2Router === 'function') {
-  mainApp.use('/bot', bot2Router); // استخدم كـ router
-} else if (bot2Router.router && typeof bot2Router.router === 'function') {
-  mainApp.use('/bot', bot2Router.router); // استخدم التطبيق المدمج
-}*/
-
-if (typeof bot2 === 'function') {
-  mainApp.use('/', bot2); // استخدم كـ router
-} else if (bot2.router && typeof bot2.router === 'function') {
-  mainApp.use('/', bot2.router); // استخدم التطبيق المدمج
-}
-
+// Bot project
+// The bot project handles its own login in bot/index.js
+require('./bot/index');
 
 // تشغيل السيرفر
 const PORT = process.env.PORT || 6269;
 mainApp.listen(PORT, () => {
   console.log(`Main server running on port ${PORT}`);
-  console.log(`Dashboard: http://localhost:${PORT}/dash`);
-  console.log(`Bot API: http://localhost:${PORT}/bot`);
+  console.log(`Dashboard: http://localhost:${PORT}`);
 });
 
-// تسجيل دخول البوتات
-if (bot1.client) bot1.client.login(process.env.BOT1_TOKEN);
-if (bot1.client1) bot1.client1.login(process.env.BOT1_1_TOKEN);
-if (bot2Client.login) bot2Client.login(process.env.BOT1_TOKEN);
+// تسجيل دخول بوتات الداشبورد (لأنها معطلة في dash/index.js)
+if (dash.client && process.env.BOT1_TOKEN) {
+  dash.client.login(process.env.BOT1_TOKEN).catch(err => console.error("Dash Bot 1 Login Failed:", err.message));
+} else if (dash.client) {
+  console.warn("Dash Bot 1: BOT1_TOKEN is missing in environment variables.");
+}
+
+if (dash.client1 && process.env.BOT1_1_TOKEN) {
+  dash.client1.login(process.env.BOT1_1_TOKEN).catch(err => console.error("Dash Bot 2 Login Failed:", err.message));
+} else if (dash.client1) {
+  console.warn("Dash Bot 2: BOT1_1_TOKEN is missing in environment variables.");
+}

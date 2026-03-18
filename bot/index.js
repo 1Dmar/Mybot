@@ -49,6 +49,13 @@ client.userSettings = new Collection();
 client.tempData = {};
 client.events = 0;
 
+// Initialize Database Models
+client.db = {
+    Server: Server,
+    StatusBar: StatusBar,
+    Langs: Langs
+};
+
 // Handlers
 const handlers = [
     "event_handler",
