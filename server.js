@@ -36,6 +36,10 @@ mainApp.listen(PORT, () => {
 });
 
 // تسجيل دخول البوتات
-if (bot1.client) bot1.client.login(process.env.BOT1_TOKEN);
-if (bot1.client1) bot1.client1.login(process.env.BOT1_1_TOKEN);
-if (bot2Client.login) bot2Client.login(process.env.BOT1_TOKEN);
+const botToken = process.env.BOT_TOKEN || process.env.BOT1_1_TOKEN || process.env.BOT1_TOKEN;
+if (bot1.client && botToken) bot1.client.login(botToken);
+if (bot1.client1 && botToken) bot1.client1.login(botToken);
+if (bot2Client.login && botToken) bot2Client.login(botToken);
+if (!botToken) {
+  console.error('❌ No BOT_TOKEN, BOT1_1_TOKEN, or BOT1_TOKEN found in environment variables');
+}
