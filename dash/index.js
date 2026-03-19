@@ -50,26 +50,7 @@ const webhookClient = new WebhookClient({
   id: '1322151531260284979', token: 'FsQoCxU3C782YYS0SRKNTPKRi8NIgm1hT_JfliwHcgZ4q5M7t586HRArJD9PsnEbszjp'
 });
 
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildMembers
-    ]
-});
-
-const client1 = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildMembers
-    ],
-    partials: [Partials.Channel]
-});
+const { client, client1 } = require('../bot.js');
 
 const DISCORD_CLIENT_ID= BigInt(1130577557461401622).toString();
 const DISCORD_GUILD_ID=BigInt(1226151054178127872).toString();
@@ -107,18 +88,21 @@ client.on("ready", async () => {
       console.error('خطأ في جلب استهلاك المعالج:', error);
     }
     
-    client1.user.setStatus("online");
-
-  const activities = [
-    { name: "Moddy | New update! 🚀", type: ActivityType.Playing },
-    { name: "Moddy | Powered by ProMcBot! 🔥", type: ActivityType.Playing }
-  ];
-  
-  let i = 0;
-  setInterval(() => {
-     client1.user.setActivity(activities[i]);
-    i = (i + 1) % activities.length;
-  }, 10000);
+    if (client1.user) {
+        client1.user.setStatus("online");
+        const activities = [
+            { name: "Moddy | New update! 🚀", type: ActivityType.Playing },
+            { name: "Moddy | Powered by ProMcBot! 🔥", type: ActivityType.Playing }
+        ];
+        
+        let i = 0;
+        setInterval(() => {
+            if (client1.user) {
+                client1.user.setActivity(activities[i]);
+                i = (i + 1) % activities.length;
+            }
+        }, 10000);
+    }
 });
 
 app.use(session({

@@ -14,9 +14,7 @@ module.exports = async (client) => {
 
    const commandsPath = path.join(__dirname, "..", "Commands", "Message"); 
       readdirSync(commandsPath).forEach((dir) => {
-      const commands = readdirSync(`${commandsPath}/${dir}`).filter((f) =>
-        f.endsWith(".js")
-      );
+      const commands = readdirSync(`${commandsPath}/${dir}`);
 
       for (const cmd of commands) {
         const command = require(`../Commands/Message/${dir}/${cmd}`);

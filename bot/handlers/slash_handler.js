@@ -5,10 +5,9 @@ require('dotenv').config();
 
 module.exports = async (client) => {
     try {
-        // Use the correct token from config or env
-        const token = process.env.BOT1_1_TOKEN || client.token;
+        const token = process.env.BOT_TOKEN || process.env.BOT1_1_TOKEN || process.env.BOT1_TOKEN;
         if (!token) {
-            console.error("❌ Error: Bot token is not defined in environment variables (BOT1_1_TOKEN)");
+            console.error("❌ Error: Bot token is not defined in environment variables");
             return;
         }
 
@@ -49,9 +48,9 @@ module.exports = async (client) => {
         client.once("ready", async () => {
             try {
                 const rest = new REST({ version: "10" }).setToken(token);
-                const clientId = '1220005260857311294';// client.user.id;
+                const clientId = client.user.id;
 
-                console.log(`🔄 Registering slash commands for ${client.user.tag}...`);
+                console.log(`🔄 Registering slash commands for ${client.user.tag} (${clientId})...`);
 
                 // Try guild registration first for faster updates (optional)
                 const GUILD_ID = process.env.TEST_GUILD_ID || "1226151054178127872";
